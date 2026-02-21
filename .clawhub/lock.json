@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "skills": {
+    "qweather": {
+      "version": "1.0.0",
+      "installedAt": 1770496065727
+    },
+    "weather": {
+      "version": "1.0.0",
+      "installedAt": 1770496406549
+    },
+    "openclaw-feeds": {
+      "version": "3.1.1",
+      "installedAt": 1770499193656
+    },
+    "news-summary": {
+      "version": "1.0.1",
+      "installedAt": 1770499511871
+    },
+    "yt-dlp-downloader-skill": {
+      "version": "0.1.0",
+      "installedAt": 1770499583986
+    },
+    "gmail": {
+      "version": "1.0.3",
+      "installedAt": 1770500230035
+    },
+    "video-subtitles": {
+      "version": "1.0.0",
+      "installedAt": 1771119078702
+    },
+    "google-weather": {
+      "version": "1.2.0",
+      "installedAt": 1771135239190
+    }
+  }
+}
