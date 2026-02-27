@@ -16,3 +16,6 @@
   - sudo apt update
   - sudo apt install -y git curl wget unzip p7zip-full htop python3 python3-pip build-essential cmake
   - （可选）Chrome/Chromium、Timeshift、VS Code、openssh-server（如需远程）
+- 从 Windows-OpenClaw 迁移任务到 Linux：
+  - 已完成环境补齐与验证：p7zip-full、htop、python3-pip、ffmpeg、jq、ripgrep、fd-find、tmux、tree、git-lfs
+  - 追加待办：做“开机后一键自检脚本”（OpenClaw 状态 + 工具链 + NTFS 挂载）
