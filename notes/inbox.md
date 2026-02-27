@@ -19,3 +19,6 @@
 - 从 Windows-OpenClaw 迁移任务到 Linux：
   - 已完成环境补齐与验证：p7zip-full、htop、python3-pip、ffmpeg、jq、ripgrep、fd-find、tmux、tree、git-lfs
   - 追加待办：做“开机后一键自检脚本”（OpenClaw 状态 + 工具链 + NTFS 挂载）
+- 追加长期任务（从旧会话确认）：
+  - 每周一/三/五 05:00（America/Toronto）自动推送歌词生成任务（A天气季节 / B爱情隐喻 / C风景人文），规则已固化在 `notes/lyrics-rules.md`。
+  - 包含“照片模式”：收到真实照片时，输出中/英/日三语歌词。
