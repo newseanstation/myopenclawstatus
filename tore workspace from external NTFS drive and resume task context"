@@ -1,0 +1,311 @@
+[1mdiff --git a/notes/inbox.md b/notes/inbox.md[m
+[1mindex a283acf..7bbea93 100644[m
+[1m--- a/notes/inbox.md[m
+[1m+++ b/notes/inbox.md[m
+[36m@@ -9,4 +9,10 @@[m
+ [m
+ ## 2026-02-26[m
+ - 用户反馈：希望我能根据 Telegram 过往约定持续执行，避免“忘事/没做”。[m
+[31m-- 待办：把“每晚自动摘要”做成 cron/固定流程；把长期任务（歌词/选号等）加入任务清单与状态跟踪。[m
+[32m+[m[32m- 已落实：夜间摘要 cron + 周二/五 Lotto Max 选号 cron。[m
+[32m+[m
+[32m+[m[32m## 2026-02-27[m
+[32m+[m[32m- Ubuntu 新装机必备软件清单（用于跑 OpenClaw）：[m
+[32m+[m[32m  - sudo apt update[m
+[32m+[m[32m  - sudo apt install -y git curl wget unzip p7zip-full htop python3 python3-pip build-essential cmake[m
+[32m+[m[32m  - （可选）Chrome/Chromium、Timeshift、VS Code、openssh-server（如需远程）[m
+[1mdiff --git a/run_all.bat b/run_all.bat[m
+[1mindex c466fc3..009dfb9 100644[m
+[1m--- a/run_all.bat[m
+[1m+++ b/run_all.bat[m
+[36m@@ -1,145 +1,145 @@[m
+[31m-@echo off[m
+[31m-setlocal EnableExtensions EnableDelayedExpansion[m
+[31m-chcp 65001 >nul[m
+[31m-[m
+[31m-REM ==============================================================[m
+[31m-REM run_all.bat[m
+[31m-REM Purpose:[m
+[31m-REM   1) Generate original-language subtitles (ZH SRT) with Whisper[m
+[31m-REM   2) Translate speech to English subtitles (EN SRT) with Whisper[m
+[31m-REM   3) Convert EN SRT -> ASS (optional but recommended)[m
+[31m-REM   4) Burn ASS into video (hard subtitles)[m
+[31m-REM[m
+[31m-REM Usage:[m
+[31m-REM   - Drag and drop your video onto this .bat, OR[m
+[31m-REM   - Run: run_all.bat "G:\path\to\video.mp4"[m
+[31m-REM[m
+[31m-REM Notes:[m
+[31m-REM   - Adjust PYTHON_EXE below to your actual python.exe path.[m
+[31m-REM   - Requires ffmpeg available in PATH.[m
+[31m-REM ==============================================================[m
+[31m-[m
+[31m-REM --- CONFIG: set your Python executable path (portable python in your setup)[m
+[31m-set "PYTHON_EXE=G:\SadTalker\python310\python.exe"[m
+[31m-[m
+[31m-REM --- INPUT[m
+[31m-if "%~1"=="" ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] No input video specified.[m
+[31m-  echo Drag^&drop a video onto this bat, or run:[m
+[31m-  echo   %~nx0 "G:\soundscreen\SabbaShopGuide.mp4"[m
+[31m-  echo.[m
+[31m-  exit /b 2[m
+[31m-)[m
+[31m-[m
+[31m-set "IN_VIDEO=%~1"[m
+[31m-[m
+[31m-REM --- Resolve working directory to the input video's folder[m
+[31m-for %%F in ("%IN_VIDEO%") do ([m
+[31m-  set "IN_DIR=%%~dpF"[m
+[31m-  set "IN_NAME=%%~nF"[m
+[31m-  set "IN_EXT=%%~xF"[m
+[31m-)[m
+[31m-[m
+[31m-pushd "%IN_DIR%" || (echo [ERROR] Cannot cd to input folder: "%IN_DIR%" & exit /b 3)[m
+[31m-[m
+[31m-REM --- Basic checks[m
+[31m-if not exist "%PYTHON_EXE%" ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] Python not found at:[m
+[31m-  echo   %PYTHON_EXE%[m
+[31m-  echo Edit PYTHON_EXE at the top of this file.[m
+[31m-  echo.[m
+[31m-  popd[m
+[31m-  exit /b 4[m
+[31m-)[m
+[31m-[m
+[31m-where ffmpeg >nul 2>nul[m
+[31m-if errorlevel 1 ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] ffmpeg not found in PATH.[m
+[31m-  echo Install ffmpeg (e.g. winget install Gyan.FFmpeg) and reopen CMD.[m
+[31m-  echo.[m
+[31m-  popd[m
+[31m-  exit /b 5[m
+[31m-)[m
+[31m-[m
+[31m-REM --- Output folders[m
+[31m-set "OUT_ZH=%IN_DIR%out_zh"[m
+[31m-set "OUT_EN=%IN_DIR%out_en"[m
+[31m-if not exist "%OUT_ZH%" mkdir "%OUT_ZH%" >nul 2>nul[m
+[31m-if not exist "%OUT_EN%" mkdir "%OUT_EN%" >nul 2>nul[m
+[31m-[m
+[31m-echo.[m
+[31m-echo ==============================================================[m
+[31m-echo Input video : "%IN_VIDEO%"[m
+[31m-echo Output (ZH) : "%OUT_ZH%\%IN_NAME%.srt"[m
+[31m-echo Output (EN) : "%OUT_EN%\%IN_NAME%.srt"[m
+[31m-echo ==============================================================[m
+[31m-echo.[m
+[31m-[m
+[31m-REM --- 1) Original-language subtitles (ZH)[m
+[31m-echo [1/4] Generating original-language subtitles (transcribe)...[m
+[31m-"%PYTHON_EXE%" -m whisper "%IN_VIDEO%" --task transcribe --output_format srt --output_dir "%OUT_ZH%" --verbose False[m
+[31m-if errorlevel 1 ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] Whisper transcribe failed.[m
+[31m-  popd[m
+[31m-  exit /b 10[m
+[31m-)[m
+[31m-[m
+[31m-REM --- 2) English subtitles (translate)[m
+[31m-echo.[m
+[31m-echo [2/4] Translating speech to English subtitles (translate)...[m
+[31m-"%PYTHON_EXE%" -m whisper "%IN_VIDEO%" --task translate --model medium --output_format srt --output_dir "%OUT_EN%" --initial_prompt "Translate all speech to English. Output English only." --verbose False[m
+[31m-if errorlevel 1 ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] Whisper translate failed.[m
+[31m-  popd[m
+[31m-  exit /b 11[m
+[31m-)[m
+[31m-[m
+[31m-REM --- 3) Convert EN SRT -> ASS (recommended for burning)[m
+[31m-set "EN_SRT=%OUT_EN%\%IN_NAME%.srt"[m
+[31m-set "EN_ASS=%OUT_EN%\%IN_NAME%.ass"[m
+[31m-echo.[m
+[31m-echo [3/4] Converting EN SRT to ASS...[m
+[31m-ffmpeg -y -i "%EN_SRT%" "%EN_ASS%" >nul[m
+[31m-if errorlevel 1 ([m
+[31m-  echo.[m
+[31m-  echo [WARN] SRT->ASS conversion failed. Will attempt to burn SRT directly.[m
+[31m-)[m
+[31m-[m
+[31m-REM --- 4) Burn subtitles into video[m
+[31m-REM IMPORTANT: Avoid drive-letter parsing issues inside ffmpeg filters by copying subtitle to current dir[m
+[31m-echo.[m
+[31m-echo [4/4] Burning subtitles into video...[m
+[31m-set "OUT_VIDEO=%IN_DIR%%IN_NAME%_en_subbed%IN_EXT%"[m
+[31m-[m
+[31m-if exist "%EN_ASS%" ([m
+[31m-  copy /y "%EN_ASS%" "%IN_DIR%sub.ass" >nul[m
+[31m-  ffmpeg -y -i "%IN_VIDEO%" -vf "ass=sub.ass" -c:a copy "%OUT_VIDEO%"[m
+[31m-) else ([m
+[31m-  copy /y "%EN_SRT%" "%IN_DIR%sub.srt" >nul[m
+[31m-  ffmpeg -y -i "%IN_VIDEO%" -vf "subtitles=sub.srt" -c:a copy "%OUT_VIDEO%"[m
+[31m-)[m
+[31m-[m
+[31m-if errorlevel 1 ([m
+[31m-  echo.[m
+[31m-  echo [ERROR] Burning subtitles failed.[m
+[31m-  echo Tip: Ensure the video and sub.ass/sub.srt are in the same folder.[m
+[31m-  popd[m
+[31m-  exit /b 12[m
+[31m-)[m
+[31m-[m
+[31m-REM --- Done[m
+[31m-echo.[m
+[31m-echo [OK] Done.[m
+[31m-echo ZH SRT : "%OUT_ZH%\%IN_NAME%.srt"[m
+[31m-echo EN SRT : "%OUT_EN%\%IN_NAME%.srt"[m
+[31m-echo Output : "%OUT_VIDEO%"[m
+[31m-echo.[m
+[31m-[m
+[31m-popd[m
+[31m-endlocal[m
+[31m-exit /b 0[m
+[32m+[m[32m@echo off[m[41m[m
+[32m+[m[32msetlocal EnableExtensions EnableDelayedExpansion[m[41m[m
+[32m+[m[32mchcp 65001 >nul[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM ==============================================================[m[41m[m
+[32m+[m[32mREM run_all.bat[m[41m[m
+[32m+[m[32mREM Purpose:[m[41m[m
+[32m+[m[32mREM   1) Generate original-language subtitles (ZH SRT) with Whisper[m[41m[m
+[32m+[m[32mREM   2) Translate speech to English subtitles (EN SRT) with Whisper[m[41m[m
+[32m+[m[32mREM   3) Convert EN SRT -> ASS (optional but recommended)[m[41m[m
+[32m+[m[32mREM   4) Burn ASS into video (hard subtitles)[m[41m[m
+[32m+[m[32mREM[m[41m[m
+[32m+[m[32mREM Usage:[m[41m[m
+[32m+[m[32mREM   - Drag and drop your video onto this .bat, OR[m[41m[m
+[32m+[m[32mREM   - Run: run_all.bat "G:\path\to\video.mp4"[m[41m[m
+[32m+[m[32mREM[m[41m[m
+[32m+[m[32mREM Notes:[m[41m[m
+[32m+[m[32mREM   - Adjust PYTHON_EXE below to your actual python.exe path.[m[41m[m
+[32m+[m[32mREM   - Requires ffmpeg available in PATH.[m[41m[m
+[32m+[m[32mREM ==============================================================[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- CONFIG: set your Python executable path (portable python in your setup)[m[41m[m
+[32m+[m[32mset "PYTHON_EXE=G:\SadTalker\python310\python.exe"[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- INPUT[m[41m[m
+[32m+[m[32mif "%~1"=="" ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] No input video specified.[m[41m[m
+[32m+[m[32m  echo Drag^&drop a video onto this bat, or run:[m[41m[m
+[32m+[m[32m  echo   %~nx0 "G:\soundscreen\SabbaShopGuide.mp4"[m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  exit /b 2[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mset "IN_VIDEO=%~1"[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- Resolve working directory to the input video's folder[m[41m[m
+[32m+[m[32mfor %%F in ("%IN_VIDEO%") do ([m[41m[m
+[32m+[m[32m  set "IN_DIR=%%~dpF"[m[41m[m
+[32m+[m[32m  set "IN_NAME=%%~nF"[m[41m[m
+[32m+[m[32m  set "IN_EXT=%%~xF"[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mpushd "%IN_DIR%" || (echo [ERROR] Cannot cd to input folder: "%IN_DIR%" & exit /b 3)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- Basic checks[m[41m[m
+[32m+[m[32mif not exist "%PYTHON_EXE%" ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] Python not found at:[m[41m[m
+[32m+[m[32m  echo   %PYTHON_EXE%[m[41m[m
+[32m+[m[32m  echo Edit PYTHON_EXE at the top of this file.[m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  popd[m[41m[m
+[32m+[m[32m  exit /b 4[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mwhere ffmpeg >nul 2>nul[m[41m[m
+[32m+[m[32mif errorlevel 1 ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] ffmpeg not found in PATH.[m[41m[m
+[32m+[m[32m  echo Install ffmpeg (e.g. winget install Gyan.FFmpeg) and reopen CMD.[m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  popd[m[41m[m
+[32m+[m[32m  exit /b 5[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- Output folders[m[41m[m
+[32m+[m[32mset "OUT_ZH=%IN_DIR%out_zh"[m[41m[m
+[32m+[m[32mset "OUT_EN=%IN_DIR%out_en"[m[41m[m
+[32m+[m[32mif not exist "%OUT_ZH%" mkdir "%OUT_ZH%" >nul 2>nul[m[41m[m
+[32m+[m[32mif not exist "%OUT_EN%" mkdir "%OUT_EN%" >nul 2>nul[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[32mecho ==============================================================[m[41m[m
+[32m+[m[32mecho Input video : "%IN_VIDEO%"[m[41m[m
+[32m+[m[32mecho Output (ZH) : "%OUT_ZH%\%IN_NAME%.srt"[m[41m[m
+[32m+[m[32mecho Output (EN) : "%OUT_EN%\%IN_NAME%.srt"[m[41m[m
+[32m+[m[32mecho ==============================================================[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- 1) Original-language subtitles (ZH)[m[41m[m
+[32m+[m[32mecho [1/4] Generating original-language subtitles (transcribe)...[m[41m[m
+[32m+[m[32m"%PYTHON_EXE%" -m whisper "%IN_VIDEO%" --task transcribe --output_format srt --output_dir "%OUT_ZH%" --verbose False[m[41m[m
+[32m+[m[32mif errorlevel 1 ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] Whisper transcribe failed.[m[41m[m
+[32m+[m[32m  popd[m[41m[m
+[32m+[m[32m  exit /b 10[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- 2) English subtitles (translate)[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[32mecho [2/4] Translating speech to English subtitles (translate)...[m[41m[m
+[32m+[m[32m"%PYTHON_EXE%" -m whisper "%IN_VIDEO%" --task translate --model medium --output_format srt --output_dir "%OUT_EN%" --initial_prompt "Translate all speech to English. Output English only." --verbose False[m[41m[m
+[32m+[m[32mif errorlevel 1 ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] Whisper translate failed.[m[41m[m
+[32m+[m[32m  popd[m[41m[m
+[32m+[m[32m  exit /b 11[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- 3) Convert EN SRT -> ASS (recommended for burning)[m[41m[m
+[32m+[m[32mset "EN_SRT=%OUT_EN%\%IN_NAME%.srt"[m[41m[m
+[32m+[m[32mset "EN_ASS=%OUT_EN%\%IN_NAME%.ass"[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[32mecho [3/4] Converting EN SRT to ASS...[m[41m[m
+[32m+[m[32mffmpeg -y -i "%EN_SRT%" "%EN_ASS%" >nul[m[41m[m
+[32m+[m[32mif errorlevel 1 ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [WARN] SRT->ASS conversion failed. Will attempt to burn SRT directly.[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- 4) Burn subtitles into video[m[41m[m
+[32m+[m[32mREM IMPORTANT: Avoid drive-letter parsing issues inside ffmpeg filters by copying subtitle to current dir[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[32mecho [4/4] Burning subtitles into video...[m[41m[m
+[32m+[m[32mset "OUT_VIDEO=%IN_DIR%%IN_NAME%_en_subbed%IN_EXT%"[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mif exist "%EN_ASS%" ([m[41m[m
+[32m+[m[32m  copy /y "%EN_ASS%" "%IN_DIR%sub.ass" >nul[m[41m[m
+[32m+[m[32m  ffmpeg -y -i "%IN_VIDEO%" -vf "ass=sub.ass" -c:a copy "%OUT_VIDEO%"[m[41m[m
+[32m+[m[32m) else ([m[41m[m
+[32m+[m[32m  copy /y "%EN_SRT%" "%IN_DIR%sub.srt" >nul[m[41m[m
+[32m+[m[32m  ffmpeg -y -i "%IN_VIDEO%" -vf "subtitles=sub.srt" -c:a copy "%OUT_VIDEO%"[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mif errorlevel 1 ([m[41m[m
+[32m+[m[32m  echo.[m[41m[m
+[32m+[m[32m  echo [ERROR] Burning subtitles failed.[m[41m[m
+[32m+[m[32m  echo Tip: Ensure the video and sub.ass/sub.srt are in the same folder.[m[41m[m
+[32m+[m[32m  popd[m[41m[m
+[32m+[m[32m  exit /b 12[m[41m[m
+[32m+[m[32m)[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mREM --- Done[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[32mecho [OK] Done.[m[41m[m
+[32m+[m[32mecho ZH SRT : "%OUT_ZH%\%IN_NAME%.srt"[m[41m[m
+[32m+[m[32mecho EN SRT : "%OUT_EN%\%IN_NAME%.srt"[m[41m[m
+[32m+[m[32mecho Output : "%OUT_VIDEO%"[m[41m[m
+[32m+[m[32mecho.[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32mpopd[m[41m[m
+[32m+[m[32mendlocal[m[41m[m
+[32m+[m[32mexit /b 0[m[41m[m

@@ -9,4 +9,10 @@
 
 ## 2026-02-26
 - 用户反馈：希望我能根据 Telegram 过往约定持续执行，避免“忘事/没做”。
-- 待办：把“每晚自动摘要”做成 cron/固定流程；把长期任务（歌词/选号等）加入任务清单与状态跟踪。
+- 已落实：夜间摘要 cron + 周二/五 Lotto Max 选号 cron。
+
+## 2026-02-27
+- Ubuntu 新装机必备软件清单（用于跑 OpenClaw）：
+  - sudo apt update
+  - sudo apt install -y git curl wget unzip p7zip-full htop python3 python3-pip build-essential cmake
+  - （可选）Chrome/Chromium、Timeshift、VS Code、openssh-server（如需远程）
