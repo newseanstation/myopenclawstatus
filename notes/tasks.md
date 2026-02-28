@@ -4,8 +4,10 @@
 
 ## 进行中 / 待办
 - [ ] **每晚 00:00（America/Toronto）自动摘要/归档**：仅处理 `notes/inbox.md` + 当天新增对话（需要先被摘到 inbox）。
-- [ ] **歌词自动推送 cron 重建（周一/三/五 05:00 America/Toronto）**：按 `notes/lyrics-rules.md` 执行 A/B/C 三类任务，支持“照片模式”三语歌词。
-- [ ] **Linux 开机后一键自检脚本**：30秒检查 OpenClaw 状态、常用工具、外接 NTFS 挂载状态（从 Windows-OpenClaw 迁移后的持续维护项）。
+- [x] **歌词自动推送 cron 重建（周一/三/五 05:00 America/Toronto）**：按 `notes/lyrics-rules.md` 执行 A/B/C 三类任务，支持“照片模式”三语歌词。  
+  - jobs: `lyrics-mon-0500` / `lyrics-wed-0500` / `lyrics-fri-0500`（channel: telegram, to: 5913602407）
+- [x] **Linux 开机后一键自检脚本**：30秒检查 OpenClaw 状态、常用工具、外接 NTFS 挂载状态（从 Windows-OpenClaw 迁移后的持续维护项）。  
+  - script: `scripts/openclaw-selfcheck.sh`
 - [x] **Lotto Max 选号**：每周二/五 08:00（America/Toronto）给 3 注；选号前查看近30期热冷分布（lotteryextreme）。
 
 ## 已完成
