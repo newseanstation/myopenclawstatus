@@ -34,6 +34,19 @@ sudo apt update
 sudo apt install -y python3-tk
 ```
 
+## Build Windows EXE (`X.exe`)
+
+This repo includes GitHub Actions workflow:
+
+- `.github/workflows/build-windows-exe.yml`
+
+How to use:
+1. Push code to GitHub.
+2. Create/push a tag like `v0.1.0` (or run workflow manually in Actions).
+3. Download `X.exe` from:
+   - Actions artifacts (`X-windows-exe`), or
+   - GitHub Release assets (for tag builds).
+
 ## Notes
 
 - This is a custom project, not an official default OpenClaw UI.

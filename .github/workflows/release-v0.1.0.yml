@@ -1,0 +1,48 @@
+name: Release v0.1.0
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create tag if missing
+        run: |
+          git fetch --tags
+          if git rev-parse v0.1.0 >/dev/null 2>&1; then
+            echo "tag exists"
+          else
+            git tag v0.1.0
+            git push origin v0.1.0
+          fi
+
+      - name: Create release notes body
+        run: |
+          cat > RELEASE_BODY.md << 'EOF'
+          # My OpenClaw Status Cockpit v0.1.0
+
+          Initial public release.
+
+          ## Highlights
+          - Visual status cockpit
+          - Score / grade / percentile
+          - Warning lights + maintenance tools
+          - Workspace metrics
+          - Animated lobster UI
+
+          See CHANGELOG.md for details.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          body_path: RELEASE_BODY.md
+          generate_release_notes: true
