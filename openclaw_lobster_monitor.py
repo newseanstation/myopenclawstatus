@@ -84,6 +84,8 @@ def workspace_stats(workspace_dir: Path):
     file_count = 0
     task_files = 0
     total_bytes = 0
+    task_open = 0
+    task_done = 0
 
     task_patterns = ["task", "todo", "issue", "ticket", "job", "需求", "任务"]
     task_exts = {".md", ".txt", ".json", ".yaml", ".yml"}
@@ -101,8 +103,17 @@ def workspace_stats(workspace_dir: Path):
 
             name_lower = p.name.lower()
             ext = p.suffix.lower()
-            if ext in task_exts and any(k in name_lower for k in task_patterns):
+            is_task_file = ext in task_exts and any(k in name_lower for k in task_patterns)
+            if is_task_file:
                 task_files += 1
+                # Markdown checkbox任务统计
+                if ext in {".md", ".txt"}:
+                    try:
+                        txt = p.read_text(encoding="utf-8", errors="ignore")
+                        task_open += len(re.findall(r"(?im)^\s*[-*]\s*\[\s\]", txt))
+                        task_done += len(re.findall(r"(?im)^\s*[-*]\s*\[[xX]\]", txt))
+                    except Exception:
+                        pass
     except Exception:
         pass
 
@@ -121,6 +132,9 @@ def workspace_stats(workspace_dir: Path):
     return {
         "file_count": file_count,
         "task_files": task_files,
+        "task_open": task_open,
+        "task_done": task_done,
+        "task_total": task_open + task_done,
         "workspace_gb": ws_gb,
         "partition_total_gb": part_total / (1024**3) if part_total else 0,
         "partition_used_gb": part_used / (1024**3) if part_total else 0,
@@ -506,8 +520,9 @@ class LobsterMonitor(tk.Tk):
         )
         self.ws_task_lbl.config(
             text=(
-                f"任务数量(按文件估算): {self.ws.get('task_files',0)}"
-                f"  ·  文件总数: {self.ws.get('file_count',0)}"
+                f"任务条目: 总{self.ws.get('task_total',0)}"
+                f"（进行中{self.ws.get('task_open',0)} / 已完成{self.ws.get('task_done',0)}）"
+                f"  ·  任务文件: {self.ws.get('task_files',0)}  ·  文件总数: {self.ws.get('file_count',0)}"
             )
         )
 
