@@ -251,6 +251,8 @@ class LobsterMonitor(tk.Tk):
         self.sys = {}
         self.deep_status_text = ""
         self.last_deep_ts = 0
+        self.last_maint_ts = 0
+        self.maint_running = False
         self.rating = {"score": 0, "grade": "D", "percentile": 1, "reasons": []}
 
         self._build_ui()
@@ -297,8 +299,18 @@ class LobsterMonitor(tk.Tk):
         self.rank_detail = ttk.Label(card0, text="分位: --")
         self.rank_detail.pack(anchor="w", padx=8, pady=(0, 6))
 
-        self.alert_canvas = tk.Canvas(card0, width=340, height=36, bg="#0d1f36", highlightthickness=0)
-        self.alert_canvas.pack(anchor="w", padx=8, pady=(0, 8))
+        self.alert_canvas = tk.Canvas(card0, width=560, height=36, bg="#0d1f36", highlightthickness=0)
+        self.alert_canvas.pack(anchor="w", padx=8, pady=(0, 4))
+
+        ctrl = ttk.Frame(card0)
+        ctrl.pack(fill="x", padx=8, pady=(0, 8))
+        self.auto_maint_var = tk.BooleanVar(value=False)
+        self.auto_maint_chk = ttk.Checkbutton(ctrl, text="告警自动维护", variable=self.auto_maint_var)
+        self.auto_maint_chk.pack(side="left")
+        self.maint_btn = ttk.Button(ctrl, text="一键维护", command=self.run_maintenance_async)
+        self.maint_btn.pack(side="left", padx=(10, 0))
+        self.maint_lbl = ttk.Label(ctrl, text="维护状态: 待命")
+        self.maint_lbl.pack(side="left", padx=(10, 0))
 
         card1 = ttk.LabelFrame(left, text="系统资讯", style="Card.TLabelframe")
         card1.pack(fill="x", pady=6)
@@ -408,6 +420,11 @@ class LobsterMonitor(tk.Tk):
             self.alert_canvas.create_oval(x0 + i * 34, 8, x0 + 20 + i * 34, 28, fill=fill, outline="#0a0a0a")
         self.alert_canvas.create_text(186, 18, text=level_text, anchor="w", fill="#d9f0ff", font=("Segoe UI", 10))
 
+        # 自动维护开关：黄/红灯触发，30分钟冷却
+        if self.auto_maint_var.get() and level in ("yellow", "red") and not self.maint_running:
+            if time.time() - self.last_maint_ts > 1800:
+                self.run_maintenance_async()
+
         self.system_text.delete("1.0", "end")
         self.system_text.insert("end", f"Dashboard: {self.openclaw_info.get('dashboard','-')}\n")
         self.system_text.insert("end", f"Gateway: {self.openclaw_info.get('gateway','-')}\n")
@@ -434,6 +451,34 @@ class LobsterMonitor(tk.Tk):
         self.task_text.insert("end", "- 每10秒采样基础状态\n")
         self.task_text.insert("end", "- 每120秒刷新深度探针\n")
         self.task_text.insert("end", "- 生成官方可比体量评级\n")
+
+    def run_maintenance_async(self):
+        if self.maint_running:
+            return
+        self.maint_running = True
+        self.maint_lbl.config(text="维护状态: 执行中...")
+        threading.Thread(target=self.perform_maintenance, daemon=True).start()
+
+    def perform_maintenance(self):
+        logs = []
+        commands = [
+            "openclaw security audit",
+            "openclaw gateway restart",
+            "openclaw status --deep",
+        ]
+
+        # 仅在检测到可更新时尝试更新
+        if "available" in (self.openclaw_info.get("update", "").lower()):
+            commands.insert(0, "openclaw update")
+
+        for c in commands:
+            out, err, code = run_cmd(c, timeout=120)
+            snippet = (out or err or "").splitlines()[:2]
+            logs.append(f"[{code}] {c} :: {' | '.join(snippet) if snippet else 'ok'}")
+
+        self.last_maint_ts = time.time()
+        self.maint_running = False
+        self.after(0, lambda: self.maint_lbl.config(text="维护状态: 完成" if logs else "维护状态: 无动作"))
 
     def animate(self):
         self.canvas.delete("all")
