@@ -131,6 +131,18 @@ def grade_from_score(score):
     return "D"
 
 
+def stage_from_score(score):
+    if score >= 92:
+        return "🦞 龙虾王（Legend）", None
+    if score >= 82:
+        return "🦞 壮虾（Elite）", 92
+    if score >= 70:
+        return "🦞 成虾（Strong）", 82
+    if score >= 58:
+        return "🦐 幼虾（Growing）", 70
+    return "🫧 虾苗（Booting）", 58
+
+
 def score_openclaw(info, sys_stats, deep_text):
     reasons = []
     score = 100.0
@@ -200,10 +212,13 @@ def score_openclaw(info, sys_stats, deep_text):
 
     score = max(0, min(100, score))
     grade = grade_from_score(score)
+    stage, next_target = stage_from_score(score)
     p = percentile_from_score(score)
     return {
         "score": round(score, 1),
         "grade": grade,
+        "stage": stage,
+        "next_target": next_target,
         "percentile": p,
         "reasons": reasons if reasons else ["状态优秀：未发现明显扣分项"],
     }
@@ -258,8 +273,12 @@ class LobsterMonitor(tk.Tk):
         card0.pack(fill="x", pady=6)
         self.rank_lbl = ttk.Label(card0, text="评级: --", font=("Segoe UI", 14, "bold"))
         self.rank_lbl.pack(anchor="w", padx=8, pady=(8, 0))
+        self.stage_lbl = ttk.Label(card0, text="成长阶段: --", font=("Segoe UI", 11))
+        self.stage_lbl.pack(anchor="w", padx=8, pady=(2, 0))
         self.rank_bar = ttk.Progressbar(card0, maximum=100)
         self.rank_bar.pack(fill="x", padx=8, pady=(8, 2))
+        self.next_bar = ttk.Progressbar(card0, maximum=100)
+        self.next_bar.pack(fill="x", padx=8, pady=(2, 2))
         self.rank_detail = ttk.Label(card0, text="分位: --")
         self.rank_detail.pack(anchor="w", padx=8, pady=(0, 8))
 
@@ -335,10 +354,29 @@ class LobsterMonitor(tk.Tk):
 
         score = self.rating.get("score", 0)
         grade = self.rating.get("grade", "D")
+        stage = self.rating.get("stage", "-")
+        next_target = self.rating.get("next_target", None)
         pct = self.rating.get("percentile", 1)
         self.rank_lbl.config(text=f"评级: {grade}  |  总分: {score:.1f}/100")
+        self.stage_lbl.config(text=f"成长阶段: {stage}")
         self.rank_bar["value"] = score
-        self.rank_detail.config(text=f"群体分位(估算): P{pct}  ·  维度: 安全/更新/可用性/资源/深度探针")
+        if next_target is None:
+            self.next_bar["value"] = 100
+            gap_text = "已达最高阶段"
+        else:
+            base = 0
+            if next_target == 92:
+                base = 82
+            elif next_target == 82:
+                base = 70
+            elif next_target == 70:
+                base = 58
+            elif next_target == 58:
+                base = 0
+            progress = (score - base) / max((next_target - base), 1) * 100
+            self.next_bar["value"] = max(0, min(100, progress))
+            gap_text = f"距离下一阶段还差 {max(0, next_target - score):.1f} 分"
+        self.rank_detail.config(text=f"群体分位(估算): P{pct}  ·  {gap_text}  ·  维度: 安全/更新/可用性/资源/深度探针")
 
         self.system_text.delete("1.0", "end")
         self.system_text.insert("end", f"Dashboard: {self.openclaw_info.get('dashboard','-')}\n")
