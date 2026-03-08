@@ -24,6 +24,7 @@
 - Keep concise: **2–3 short sentences per script**.
 - Include brief **scene description** matching the sentence.
 - Remove any "Japan" setting/content from these scripts.
+- Visual style: **children cartoon style**.
 
 ## OpenClaw setup notes
 - Memory search (embeddings) configured for **local** use (no external OpenAI/Google keys):
