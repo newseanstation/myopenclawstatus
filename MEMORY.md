@@ -18,6 +18,13 @@
 ## Car shopping (current)
 - Looking for **Subaru Crosstrek** around **$31–32k**, **<50,000 km**, **no-accident preferred**.
 
+## English teaching video script preference
+- Fixed length: **15 seconds**.
+- Roles: **1 teacher + 2 children**.
+- Keep concise: **2–3 short sentences per script**.
+- Include brief **scene description** matching the sentence.
+- Remove any "Japan" setting/content from these scripts.
+
 ## OpenClaw setup notes
 - Memory search (embeddings) configured for **local** use (no external OpenAI/Google keys):
   - `agents.defaults.memorySearch.provider = "local"`
