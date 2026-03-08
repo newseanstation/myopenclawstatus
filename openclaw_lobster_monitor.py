@@ -331,6 +331,7 @@ class LobsterMonitor(tk.Tk):
         self.last_deep_ts = 0
         self.last_maint_ts = 0
         self.maint_running = False
+        self.refresh_running = False
         self.rating = {"score": 0, "grade": "D", "percentile": 1, "reasons": []}
 
         self._build_ui()
@@ -429,43 +430,58 @@ class LobsterMonitor(tk.Tk):
         self.canvas = tk.Canvas(card4, width=420, height=210, bg="#07111f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
-        refresh_btn = ttk.Button(self, text="立即刷新", command=self.refresh_async)
-        refresh_btn.pack(pady=(0, 10))
+        footer = ttk.Frame(self)
+        footer.pack(pady=(0, 10), fill="x", padx=12)
+        self.refresh_btn = ttk.Button(footer, text="立即刷新", command=self.refresh_async)
+        self.refresh_btn.pack(side="left")
+        self.refresh_state_lbl = ttk.Label(footer, text="刷新状态: 待命")
+        self.refresh_state_lbl.pack(side="left", padx=(10, 0))
 
     def refresh_async(self):
+        if self.refresh_running:
+            self.refresh_state_lbl.config(text="刷新状态: 进行中（请稍候）")
+            return
+        self.refresh_running = True
+        self.refresh_btn.state(["disabled"])
+        self.refresh_state_lbl.config(text="刷新状态: 正在拉取状态...")
         threading.Thread(target=self.refresh_data, daemon=True).start()
 
     def refresh_data(self):
-        status_text, err, code = run_cmd("openclaw status")
-        if code != 0:
-            status_text = f"openclaw status 执行失败\n{err}"
-        self.openclaw_info = parse_openclaw_status(status_text)
+        try:
+            status_text, err, code = run_cmd("openclaw status")
+            if code != 0:
+                status_text = f"openclaw status 执行失败\n{err}"
+            self.openclaw_info = parse_openclaw_status(status_text)
 
-        # 深度探针低频刷新，减少负担
-        now = time.time()
-        if now - self.last_deep_ts > DEEP_REFRESH_SEC:
-            deep_out, _, deep_code = run_cmd("openclaw status --deep", timeout=45)
-            if deep_code == 0:
-                self.deep_status_text = deep_out
-                self.last_deep_ts = now
+            # 深度探针低频刷新，减少负担
+            now = time.time()
+            if now - self.last_deep_ts > DEEP_REFRESH_SEC:
+                deep_out, _, deep_code = run_cmd("openclaw status --deep", timeout=45)
+                if deep_code == 0:
+                    self.deep_status_text = deep_out
+                    self.last_deep_ts = now
 
-        self.sys = system_stats()
-        self.ws = workspace_stats(WORKSPACE_DIR)
-        self.rating = score_openclaw(self.openclaw_info, self.sys, self.deep_status_text)
+            self.sys = system_stats()
+            self.ws = workspace_stats(WORKSPACE_DIR)
+            self.rating = score_openclaw(self.openclaw_info, self.sys, self.deep_status_text)
 
-        sess_out, _, _ = run_cmd("openclaw sessions --json")
-        task_line = "-"
-        if sess_out:
-            try:
-                obj = json.loads(sess_out)
-                if isinstance(obj, dict) and "sessions" in obj and obj["sessions"]:
-                    latest = obj["sessions"][0]
-                    task_line = f"{latest.get('key','?')} | {latest.get('model','?')}"
-            except Exception:
-                pass
+            sess_out, _, _ = run_cmd("openclaw sessions --json")
+            task_line = "-"
+            if sess_out:
+                try:
+                    obj = json.loads(sess_out)
+                    if isinstance(obj, dict) and "sessions" in obj and obj["sessions"]:
+                        latest = obj["sessions"][0]
+                        task_line = f"{latest.get('key','?')} | {latest.get('model','?')}"
+                except Exception:
+                    pass
 
-        self.after(0, lambda: self.render(task_line))
-        self.after(REFRESH_SEC * 1000, self.refresh_async)
+            self.after(0, lambda: self.render(task_line))
+            self.after(0, lambda: self.refresh_state_lbl.config(text=f"刷新状态: 完成 {datetime.now().strftime('%H:%M:%S')}"))
+        finally:
+            self.refresh_running = False
+            self.after(0, lambda: self.refresh_btn.state(["!disabled"]))
+            self.after(REFRESH_SEC * 1000, self.refresh_async)
 
     def render(self, task_line):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
