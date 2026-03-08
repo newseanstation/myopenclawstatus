@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 from datetime import datetime
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
@@ -387,6 +387,8 @@ class LobsterMonitor(tk.Tk):
         self.auto_maint_chk.pack(side="left")
         self.maint_btn = ttk.Button(ctrl, text="一键维护", command=self.run_maintenance_async)
         self.maint_btn.pack(side="left", padx=(10, 0))
+        self.manual_btn = ttk.Button(ctrl, text="手动修复向导", command=self.open_manual_wizard)
+        self.manual_btn.pack(side="left", padx=(10, 0))
         self.maint_lbl = ttk.Label(ctrl, text="维护状态: 待命")
         self.maint_lbl.pack(side="left", padx=(10, 0))
 
@@ -565,6 +567,39 @@ class LobsterMonitor(tk.Tk):
         self.maint_running = True
         self.maint_lbl.config(text="维护状态: 执行中...")
         threading.Thread(target=self.perform_maintenance, daemon=True).start()
+
+    def open_manual_wizard(self):
+        out, err, code = run_cmd("openclaw security audit", timeout=40)
+        txt = out if code == 0 else (err or "无法读取 security audit 输出")
+
+        tips = []
+        lower = txt.lower()
+        if "trusted proxies" in lower or "reverse proxy headers" in lower:
+            tips.append(
+                "1) 反向代理信任配置\n"
+                "- 问题：gateway.trustedProxies 为空\n"
+                "- 处理：若你通过反向代理暴露控制台，在配置里设置 trustedProxies；若仅本机使用可忽略。\n"
+            )
+        if "denycommands" in lower:
+            tips.append(
+                "2) denyCommands 精确匹配\n"
+                "- 问题：denyCommands 中有无效命令名\n"
+                "- 处理：改为精确命令ID（如 canvas.present / canvas.hide / canvas.navigate 等）。\n"
+            )
+
+        if not tips:
+            tips.append("未识别到常见可向导修复项。可运行：openclaw security audit --deep 查看详情。")
+
+        cmds = (
+            "可复制命令：\n"
+            "- openclaw security audit --deep\n"
+            "- openclaw status --deep\n"
+            "- openclaw config show\n"
+            "- openclaw gateway restart\n"
+        )
+
+        message = "\n".join(tips) + "\n" + cmds
+        messagebox.showinfo("手动修复向导", message)
 
     def perform_maintenance(self):
         logs = []
