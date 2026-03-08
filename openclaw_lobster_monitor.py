@@ -8,11 +8,13 @@ import subprocess
 import threading
 import time
 import tkinter as tk
+from pathlib import Path
 from datetime import datetime
 from tkinter import ttk
 
 REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
+WORKSPACE_DIR = Path("/home/k23linux/.openclaw/workspace")
 
 
 def run_cmd(cmd, timeout=25):
@@ -76,6 +78,54 @@ def extract_update_flag(update_text):
     if "up to date" in t or "current" in t:
         return "ok"
     return "unknown"
+
+
+def workspace_stats(workspace_dir: Path):
+    file_count = 0
+    task_files = 0
+    total_bytes = 0
+
+    task_patterns = ["task", "todo", "issue", "ticket", "job", "需求", "任务"]
+    task_exts = {".md", ".txt", ".json", ".yaml", ".yml"}
+
+    try:
+        for p in workspace_dir.rglob("*"):
+            if not p.is_file():
+                continue
+            file_count += 1
+            try:
+                sz = p.stat().st_size
+            except Exception:
+                sz = 0
+            total_bytes += sz
+
+            name_lower = p.name.lower()
+            ext = p.suffix.lower()
+            if ext in task_exts and any(k in name_lower for k in task_patterns):
+                task_files += 1
+    except Exception:
+        pass
+
+    # workspace占所在分区比例
+    part_total = part_used = 0
+    try:
+        du = shutil.disk_usage(str(workspace_dir))
+        part_total = du.total
+        part_used = du.used
+    except Exception:
+        pass
+
+    ws_gb = total_bytes / (1024**3)
+    part_used_pct = (total_bytes / part_total * 100) if part_total else 0
+
+    return {
+        "file_count": file_count,
+        "task_files": task_files,
+        "workspace_gb": ws_gb,
+        "partition_total_gb": part_total / (1024**3) if part_total else 0,
+        "partition_used_gb": part_used / (1024**3) if part_total else 0,
+        "workspace_partition_pct": part_used_pct,
+    }
 
 
 def system_stats():
@@ -249,6 +299,7 @@ class LobsterMonitor(tk.Tk):
         self.angle = 0
         self.openclaw_info = {}
         self.sys = {}
+        self.ws = {}
         self.deep_status_text = ""
         self.last_deep_ts = 0
         self.last_maint_ts = 0
@@ -326,7 +377,15 @@ class LobsterMonitor(tk.Tk):
         self.disk_bar = ttk.Progressbar(card2, maximum=100)
         self.disk_bar.pack(fill="x", padx=8, pady=(10, 4))
         self.disk_lbl = ttk.Label(card2, text="磁盘")
-        self.disk_lbl.pack(anchor="w", padx=8, pady=(0, 10))
+        self.disk_lbl.pack(anchor="w", padx=8)
+
+        self.ws_bar = ttk.Progressbar(card2, maximum=100)
+        self.ws_bar.pack(fill="x", padx=8, pady=(10, 4))
+        self.ws_lbl = ttk.Label(card2, text="Workspace")
+        self.ws_lbl.pack(anchor="w", padx=8)
+
+        self.ws_task_lbl = ttk.Label(card2, text="任务文件")
+        self.ws_task_lbl.pack(anchor="w", padx=8, pady=(0, 10))
 
         card3 = ttk.LabelFrame(right, text="能力级别 / 升级状态", style="Card.TLabelframe")
         card3.pack(fill="x", pady=6)
@@ -362,6 +421,7 @@ class LobsterMonitor(tk.Tk):
                 self.last_deep_ts = now
 
         self.sys = system_stats()
+        self.ws = workspace_stats(WORKSPACE_DIR)
         self.rating = score_openclaw(self.openclaw_info, self.sys, self.deep_status_text)
 
         sess_out, _, _ = run_cmd("openclaw sessions --json")
@@ -434,8 +494,22 @@ class LobsterMonitor(tk.Tk):
 
         self.mem_bar["value"] = self.sys.get("mem_pct", 0)
         self.disk_bar["value"] = self.sys.get("disk_pct", 0)
+        self.ws_bar["value"] = self.ws.get("workspace_partition_pct", 0)
+
         self.mem_lbl.config(text=f"内存: {self.sys.get('mem_used_gb',0):.1f}/{self.sys.get('mem_total_gb',0):.1f} GB ({self.sys.get('mem_pct',0):.1f}%)")
         self.disk_lbl.config(text=f"磁盘: {self.sys.get('disk_used_gb',0):.1f}/{self.sys.get('disk_total_gb',0):.1f} GB ({self.sys.get('disk_pct',0):.1f}%)")
+        self.ws_lbl.config(
+            text=(
+                f"Workspace体积: {self.ws.get('workspace_gb',0):.3f} GB"
+                f"（占分区 {self.ws.get('workspace_partition_pct',0):.3f}%）"
+            )
+        )
+        self.ws_task_lbl.config(
+            text=(
+                f"任务数量(按文件估算): {self.ws.get('task_files',0)}"
+                f"  ·  文件总数: {self.ws.get('file_count',0)}"
+            )
+        )
 
         self.capability_text.delete("1.0", "end")
         self.capability_text.insert("end", f"升级状态: {self.openclaw_info.get('update','-')}\n")
