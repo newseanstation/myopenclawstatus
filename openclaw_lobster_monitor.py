@@ -207,19 +207,32 @@ def stage_from_score(score):
     return "🫧 虾苗（Booting）", 58
 
 
+def classify_manual_warnings(info):
+    # 这些通常是配置层面的长期项，自动维护无法直接消除
+    sec_text = (info.get("security", "") or "").lower()
+    manual = []
+    if "warn" in sec_text:
+        # 仅凭 summary 无法逐条识别，先给出通用提示
+        manual.append("安全告警中含配置项（需人工修改配置）")
+    return manual
+
+
 def alert_level(info, sys_stats):
     sec = parse_security_counts(info.get("security", ""))
     update_flag = extract_update_flag(info.get("update", ""))
     mem = sys_stats.get("mem_pct", 0)
     disk = sys_stats.get("disk_pct", 0)
+    manual_items = classify_manual_warnings(info)
 
     if sec.get("critical", 0) > 0:
-        return "red", "存在 critical 安全风险"
+        return "red", "存在 critical 安全风险", manual_items
     if sec.get("warn", 0) >= 3 or mem > 92 or disk > 95:
-        return "red", "资源或安全告警偏高"
+        return "red", "资源或安全告警偏高", manual_items
     if update_flag == "available" or sec.get("warn", 0) > 0 or mem > 82 or disk > 85:
-        return "yellow", "建议维护：有更新或轻度告警"
-    return "green", "健康：运行状态良好"
+        if manual_items:
+            return "yellow", "建议维护：含需人工处理的配置告警", manual_items
+        return "yellow", "建议维护：有更新或轻度告警", manual_items
+    return "green", "健康：运行状态良好", manual_items
 
 
 def score_openclaw(info, sys_stats, deep_text):
@@ -482,7 +495,7 @@ class LobsterMonitor(tk.Tk):
             gap_text = f"距离下一阶段还差 {max(0, next_target - score):.1f} 分"
         self.rank_detail.config(text=f"群体分位(估算): P{pct}  ·  {gap_text}  ·  维度: 安全/更新/可用性/资源/深度探针")
 
-        level, level_text = alert_level(self.openclaw_info, self.sys)
+        level, level_text, manual_items = alert_level(self.openclaw_info, self.sys)
         self.alert_canvas.delete("all")
         self.alert_canvas.create_text(6, 18, text="告警灯:", anchor="w", fill="#d9f0ff", font=("Segoe UI", 10, "bold"))
         colors_off = {"red": "#5a1b1b", "yellow": "#5a5216", "green": "#164d2a"}
@@ -492,7 +505,8 @@ class LobsterMonitor(tk.Tk):
         for i, c in enumerate(order):
             fill = colors_on[c] if c == level else colors_off[c]
             self.alert_canvas.create_oval(x0 + i * 34, 8, x0 + 20 + i * 34, 28, fill=fill, outline="#0a0a0a")
-        self.alert_canvas.create_text(186, 18, text=level_text, anchor="w", fill="#d9f0ff", font=("Segoe UI", 10))
+        extra = f"（手动项 {len(manual_items)}）" if manual_items else ""
+        self.alert_canvas.create_text(186, 18, text=f"{level_text}{extra}", anchor="w", fill="#d9f0ff", font=("Segoe UI", 10))
 
         # 自动维护开关：黄/红灯触发，30分钟冷却
         if self.auto_maint_var.get() and level in ("yellow", "red") and not self.maint_running:
@@ -533,6 +547,10 @@ class LobsterMonitor(tk.Tk):
         self.capability_text.insert("end", "扣分明细:\n")
         for r in self.rating.get("reasons", [])[:5]:
             self.capability_text.insert("end", f"- {r}\n")
+        if manual_items:
+            self.capability_text.insert("end", "\n需手动处理:\n")
+            for m in manual_items:
+                self.capability_text.insert("end", f"- {m}\n")
 
         self.task_text.delete("1.0", "end")
         self.task_text.insert("end", f"当前活跃任务(估计):\n{task_line}\n\n")
