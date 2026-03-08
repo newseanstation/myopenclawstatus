@@ -143,6 +143,21 @@ def stage_from_score(score):
     return "🫧 虾苗（Booting）", 58
 
 
+def alert_level(info, sys_stats):
+    sec = parse_security_counts(info.get("security", ""))
+    update_flag = extract_update_flag(info.get("update", ""))
+    mem = sys_stats.get("mem_pct", 0)
+    disk = sys_stats.get("disk_pct", 0)
+
+    if sec.get("critical", 0) > 0:
+        return "red", "存在 critical 安全风险"
+    if sec.get("warn", 0) >= 3 or mem > 92 or disk > 95:
+        return "red", "资源或安全告警偏高"
+    if update_flag == "available" or sec.get("warn", 0) > 0 or mem > 82 or disk > 85:
+        return "yellow", "建议维护：有更新或轻度告警"
+    return "green", "健康：运行状态良好"
+
+
 def score_openclaw(info, sys_stats, deep_text):
     reasons = []
     score = 100.0
@@ -280,7 +295,10 @@ class LobsterMonitor(tk.Tk):
         self.next_bar = ttk.Progressbar(card0, maximum=100)
         self.next_bar.pack(fill="x", padx=8, pady=(2, 2))
         self.rank_detail = ttk.Label(card0, text="分位: --")
-        self.rank_detail.pack(anchor="w", padx=8, pady=(0, 8))
+        self.rank_detail.pack(anchor="w", padx=8, pady=(0, 6))
+
+        self.alert_canvas = tk.Canvas(card0, width=340, height=36, bg="#0d1f36", highlightthickness=0)
+        self.alert_canvas.pack(anchor="w", padx=8, pady=(0, 8))
 
         card1 = ttk.LabelFrame(left, text="系统资讯", style="Card.TLabelframe")
         card1.pack(fill="x", pady=6)
@@ -377,6 +395,18 @@ class LobsterMonitor(tk.Tk):
             self.next_bar["value"] = max(0, min(100, progress))
             gap_text = f"距离下一阶段还差 {max(0, next_target - score):.1f} 分"
         self.rank_detail.config(text=f"群体分位(估算): P{pct}  ·  {gap_text}  ·  维度: 安全/更新/可用性/资源/深度探针")
+
+        level, level_text = alert_level(self.openclaw_info, self.sys)
+        self.alert_canvas.delete("all")
+        self.alert_canvas.create_text(6, 18, text="告警灯:", anchor="w", fill="#d9f0ff", font=("Segoe UI", 10, "bold"))
+        colors_off = {"red": "#5a1b1b", "yellow": "#5a5216", "green": "#164d2a"}
+        colors_on = {"red": "#ff4d4f", "yellow": "#ffd666", "green": "#52c41a"}
+        order = ["red", "yellow", "green"]
+        x0 = 70
+        for i, c in enumerate(order):
+            fill = colors_on[c] if c == level else colors_off[c]
+            self.alert_canvas.create_oval(x0 + i * 34, 8, x0 + 20 + i * 34, 28, fill=fill, outline="#0a0a0a")
+        self.alert_canvas.create_text(186, 18, text=level_text, anchor="w", fill="#d9f0ff", font=("Segoe UI", 10))
 
         self.system_text.delete("1.0", "end")
         self.system_text.insert("end", f"Dashboard: {self.openclaw_info.get('dashboard','-')}\n")
