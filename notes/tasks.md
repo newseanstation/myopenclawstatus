@@ -12,7 +12,8 @@
   - 跟踪美股预期走势与MP（MP Materials）盘前及相关消息
   - 汇总当日世界重大新闻3-5条（每条300-500字）
   - cron job: `market-world-brief-0700`
-- [x] **Lotto Max 选号**：每周二/五 08:00（America/Toronto）给 3 注；选号前查看近30期热冷分布（lotteryextreme）。
+- [x] **Lotto Max 选号**：每周二/五 10:00（America/Toronto）给 3 注；选号前查看近30期热冷分布（lotteryextreme）。
+  - cron job: `lotto-max-1000`
 
 ## 已完成
 - [x] 建立 `notes/`、`memory/`、`notes/inbox.md` 结构
