@@ -25,6 +25,11 @@
 - Include brief **scene description** matching the sentence.
 - Remove any "Japan" setting/content from these scripts.
 - Visual style: **children cartoon style**.
+- Character setting fixed:
+  - **Teacher**: kindergarten/early-childhood English teacher; warm smile; exaggerated, clear gestures for kids to mimic.
+  - **Rito (里托)**: 7-year-old boy; clearly taller than Rui; simple T-shirt + shorts + small backpack; lively movement.
+  - **Rui (路易)**: 3-year-old toddler; clearly smaller; hoodie + soft toddler shoes; slower, cute and innocent movement.
+  - Both children must remain clearly young in look and behavior; no adult-like styling/behavior.
 
 ## OpenClaw setup notes
 - Memory search (embeddings) configured for **local** use (no external OpenAI/Google keys):
