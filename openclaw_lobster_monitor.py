@@ -55,6 +55,22 @@ def save_lobster_settings(settings: dict):
         pass
 
 
+def cron_to_human(expr: str):
+    e = (expr or "").strip()
+    known = {
+        "0 6 * * *": "每天 06:00",
+        "0 8 * * *": "每天 08:00",
+        "0 10 * * *": "每天 10:00",
+        "5 10 * * 2,5": "每周二/周五 10:05",
+        "0 5 * * 1": "每周一 05:00",
+        "0 5 * * 3": "每周三 05:00",
+        "0 5 * * 5": "每周五 05:00",
+    }
+    if e in known:
+        return known[e]
+    return f"cron:{e}" if e else "未设定"
+
+
 def parse_json_loose(text):
     s = (text or "").strip()
     if not s:
@@ -754,7 +770,7 @@ class LobsterMonitor(tk.Tk):
             seen.add(name)
             emo, pet_name, path = self.infer_pet(name)
             sched = j.get("schedule", {}).get("expr", "") if isinstance(j.get("schedule", {}), dict) else ""
-            line = f"{emo} {pet_name} — {name} ({sched})"
+            line = f"{emo} {pet_name} — {name}（{cron_to_human(sched)}）"
             self.pet_list.insert("end", line)
             self.pet_item_paths[line] = path or "/home/k23linux/.openclaw/workspace/notes/tasks.md"
             count += 1
