@@ -381,6 +381,7 @@ class LobsterMonitor(tk.Tk):
         self.rating = {"score": 0, "grade": "D", "percentile": 1, "reasons": []}
         self.settings = load_lobster_settings()
         self.show_pets_var = tk.BooleanVar(value=bool(self.settings.get("showPets", True)))
+        self.pet_rows_var = tk.IntVar(value=max(4, min(20, int(self.settings.get("petRows", 5)))))
         self.pet_map = {
             "茶几新闻社": "/home/k23linux/.openclaw/workspace/notes/fangbian-template.md",
             "幸运大师": "/home/k23linux/.openclaw/workspace/notes/lotto-rules.md",
@@ -492,7 +493,7 @@ class LobsterMonitor(tk.Tk):
         self.pet_frame = ttk.LabelFrame(card4, text="宠物栏（点击可打开设定）", style="Card.TLabelframe")
         self.pet_frame.pack(fill="x", padx=8, pady=(0, 8))
 
-        self.pet_list = tk.Listbox(self.pet_frame, height=5, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
+        self.pet_list = tk.Listbox(self.pet_frame, height=self.pet_rows_var.get(), bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
         self.pet_list.pack(fill="x", padx=6, pady=(6, 6))
         self.pet_list.bind("<Double-Button-1>", lambda _e: self.open_selected_pet_file())
 
@@ -502,6 +503,8 @@ class LobsterMonitor(tk.Tk):
         ttk.Button(pet_btns, text="一键建立宠物园", command=self.bootstrap_pet_park).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开宠物总表", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/pet-roster.md")).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开任务清单", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/tasks.md")).pack(side="left", padx=(8, 0))
+        ttk.Button(pet_btns, text="宠物栏+", command=lambda: self.adjust_pet_rows(1)).pack(side="right")
+        ttk.Button(pet_btns, text="宠物栏-", command=lambda: self.adjust_pet_rows(-1)).pack(side="right", padx=(0, 6))
 
         self.canvas = tk.Canvas(card4, width=420, height=180, bg="#07111f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -669,6 +672,13 @@ class LobsterMonitor(tk.Tk):
         except Exception:
             pass
         self.settings["showPets"] = show
+        save_lobster_settings(self.settings)
+
+    def adjust_pet_rows(self, delta):
+        rows = max(4, min(20, self.pet_rows_var.get() + int(delta)))
+        self.pet_rows_var.set(rows)
+        self.pet_list.config(height=rows)
+        self.settings["petRows"] = rows
         save_lobster_settings(self.settings)
 
     def load_cron_jobs_now(self):
