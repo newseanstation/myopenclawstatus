@@ -17,10 +17,19 @@ DEEP_REFRESH_SEC = 120
 WORKSPACE_DIR = Path("/home/k23linux/.openclaw/workspace")
 SETTINGS_PATH = WORKSPACE_DIR / "notes" / "lobster-settings.json"
 
+OPENCLAW_BIN = shutil.which("openclaw")
+if not OPENCLAW_BIN:
+    fallback = Path.home() / ".npm-global" / "bin" / "openclaw"
+    if fallback.exists():
+        OPENCLAW_BIN = str(fallback)
+
 
 def run_cmd(cmd, timeout=25):
     try:
-        p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        real_cmd = cmd
+        if cmd.strip().startswith("openclaw ") and OPENCLAW_BIN:
+            real_cmd = cmd.replace("openclaw", f'"{OPENCLAW_BIN}"', 1)
+        p = subprocess.run(real_cmd, shell=True, capture_output=True, text=True, timeout=timeout)
         return (p.stdout or "").strip(), (p.stderr or "").strip(), p.returncode
     except Exception as e:
         return "", str(e), 1
