@@ -534,10 +534,7 @@ class LobsterMonitor(tk.Tk):
             self.ws = workspace_stats(WORKSPACE_DIR)
             self.rating = score_openclaw(self.openclaw_info, self.sys, self.deep_status_text)
 
-            cron_out, _, _ = run_cmd("openclaw cron list --json", timeout=40)
-            if cron_out:
-                obj = parse_json_loose(cron_out)
-                self.cron_jobs = obj.get("jobs", []) if isinstance(obj, dict) else []
+            self.load_cron_jobs_now()
 
             sess_out, _, _ = run_cmd("openclaw sessions --json")
             task_line = "-"
@@ -665,6 +662,14 @@ class LobsterMonitor(tk.Tk):
         self.settings["showPets"] = show
         save_lobster_settings(self.settings)
 
+    def load_cron_jobs_now(self):
+        cron_out, _, _ = run_cmd("openclaw cron list --json", timeout=40)
+        if not cron_out:
+            self.cron_jobs = []
+            return
+        obj = parse_json_loose(cron_out)
+        self.cron_jobs = obj.get("jobs", []) if isinstance(obj, dict) else []
+
     def infer_pet(self, job_name: str):
         n = (job_name or "").lower()
         if "lotto" in n:
@@ -681,6 +686,7 @@ class LobsterMonitor(tk.Tk):
 
     def bootstrap_pet_park(self):
         # 一键基于当前 cron 任务生成/刷新宠物总表
+        self.load_cron_jobs_now()
         lines = [
             "# 宠物总表（自动生成）",
             "",
@@ -721,6 +727,7 @@ class LobsterMonitor(tk.Tk):
         self.pet_item_paths[head] = self.pet_map.get("k23bot（总管）")
 
         seen = set()
+        count = 0
         for j in self.cron_jobs:
             name = j.get("name", "unnamed")
             if name in seen:
@@ -731,6 +738,12 @@ class LobsterMonitor(tk.Tk):
             line = f"{emo} {pet_name} — {name} ({sched})"
             self.pet_list.insert("end", line)
             self.pet_item_paths[line] = path or "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+            count += 1
+
+        if count == 0:
+            line = "⚠️ 暂未读取到 cron 任务（可点一键建立宠物园重试）"
+            self.pet_list.insert("end", line)
+            self.pet_item_paths[line] = "/home/k23linux/.openclaw/workspace/notes/tasks.md"
 
     def open_local_path(self, path):
         p = Path(path)
