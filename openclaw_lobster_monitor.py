@@ -427,7 +427,7 @@ class LobsterMonitor(tk.Tk):
         self.task_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0)
         self.task_text.pack(fill="x", padx=8, pady=8)
 
-        self.pet_text = tk.Text(card4, height=6, bg="#0d1f36", fg="#d9f0ff", bd=0)
+        self.pet_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
         self.pet_text.pack(fill="x", padx=8, pady=(0, 8))
 
         self.canvas = tk.Canvas(card4, width=420, height=180, bg="#07111f", highlightthickness=0)
