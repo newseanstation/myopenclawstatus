@@ -16,6 +16,7 @@ REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
 WORKSPACE_DIR = Path("/home/k23linux/.openclaw/workspace")
 SETTINGS_PATH = WORKSPACE_DIR / "notes" / "lobster-settings.json"
+PET_ROSTER_PATH = WORKSPACE_DIR / "notes" / "pet-roster.md"
 
 OPENCLAW_BIN = shutil.which("openclaw")
 if not OPENCLAW_BIN:
@@ -69,6 +70,28 @@ def cron_to_human(expr: str):
     if e in known:
         return known[e]
     return f"cron:{e}" if e else "未设定"
+
+
+def load_pet_overrides():
+    # 从 notes/pet-roster.md 读取手工定义的 emoji 覆盖
+    out = {}
+    try:
+        if not PET_ROSTER_PATH.exists():
+            return out
+        for line in PET_ROSTER_PATH.read_text(encoding="utf-8", errors="ignore").splitlines():
+            s = line.strip()
+            if not s.startswith("- "):
+                continue
+            # 形如: - 🤓 茶几新闻社
+            m = re.match(r"^-\s+(\S+)\s+(.+)$", s)
+            if not m:
+                continue
+            emo, name = m.group(1), m.group(2).strip()
+            name = re.sub(r"[（(].*?[）)]", "", name).strip()
+            out[name] = emo
+    except Exception:
+        pass
+    return out
 
 
 def parse_json_loose(text):
@@ -405,6 +428,7 @@ class LobsterMonitor(tk.Tk):
             "冯工": "/home/k23linux/.openclaw/workspace/openclaw_lobster_monitor.py",
             "k23bot（总管）": "/home/k23linux/.openclaw/workspace/notes/tasks.md",
         }
+        self.pet_overrides = load_pet_overrides()
         self.cron_jobs = []
         self.pet_item_paths = {}
 
@@ -708,16 +732,21 @@ class LobsterMonitor(tk.Tk):
     def infer_pet(self, job_name: str):
         n = (job_name or "").lower()
         if "lotto" in n:
-            return "🐶", "幸运大师", self.pet_map.get("幸运大师")
-        if "english" in n or "kids" in n:
-            return "🦁", "冯导", self.pet_map.get("冯导")
-        if "world-special" in n or "brief" in n or "news" in n:
-            return "🤓", "茶几新闻社", self.pet_map.get("茶几新闻社")
-        if "lyrics" in n:
-            return "🎵", "词作宠物", "/home/k23linux/.openclaw/workspace/notes/lyrics-rules.md"
-        if "market" in n:
-            return "📈", "市场观察员", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
-        return "🧩", "任务宠物", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+            emo, name, path = "🐶", "幸运大师", self.pet_map.get("幸运大师")
+        elif "english" in n or "kids" in n:
+            emo, name, path = "🦁", "冯导", self.pet_map.get("冯导")
+        elif "world-special" in n or "brief" in n or "news" in n:
+            emo, name, path = "🤓", "茶几新闻社", self.pet_map.get("茶几新闻社")
+        elif "lyrics" in n:
+            emo, name, path = "🎵", "词作宠物", "/home/k23linux/.openclaw/workspace/notes/lyrics-rules.md"
+        elif "market" in n:
+            emo, name, path = "📈", "市场观察员", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+        else:
+            emo, name, path = "🧩", "任务宠物", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+
+        # 允许 pet-roster.md 覆盖 emoji
+        emo = self.pet_overrides.get(name, emo)
+        return emo, name, path
 
     def bootstrap_pet_park(self):
         # 一键基于当前 cron 任务生成/刷新宠物总表
@@ -753,11 +782,13 @@ class LobsterMonitor(tk.Tk):
         messagebox.showinfo("完成", "已一键建立/刷新宠物园，并更新 notes/pet-roster.md")
 
     def refresh_pet_roster(self):
+        self.pet_overrides = load_pet_overrides()
         self.pet_list.delete(0, "end")
         self.pet_item_paths = {}
 
-        # 固定总管
-        head = "🦞 k23bot（总管）— 调度与总协调"
+        # 固定总管（支持 pet-roster 覆盖 emoji）
+        head_emo = self.pet_overrides.get("k23bot", "🦞")
+        head = f"{head_emo} k23bot（总管）— 调度与总协调"
         self.pet_list.insert("end", head)
         self.pet_item_paths[head] = self.pet_map.get("k23bot（总管）")
 
