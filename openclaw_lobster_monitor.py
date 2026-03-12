@@ -357,12 +357,14 @@ class LobsterMonitor(tk.Tk):
         self.settings = load_lobster_settings()
         self.show_pets_var = tk.BooleanVar(value=bool(self.settings.get("showPets", True)))
         self.pet_map = {
-            "🦞 k23bot（总管）": "/home/k23linux/.openclaw/workspace/notes/tasks.md",
-            "🤓 茶几新闻社": "/home/k23linux/.openclaw/workspace/notes/fangbian-template.md",
-            "🐶 幸运大师": "/home/k23linux/.openclaw/workspace/notes/lotto-rules.md",
-            "🦁 冯导": "/home/k23linux/.openclaw/workspace/notes/english-lesson-log.md",
-            "🐒 冯工": "/home/k23linux/.openclaw/workspace/openclaw_lobster_monitor.py",
+            "茶几新闻社": "/home/k23linux/.openclaw/workspace/notes/fangbian-template.md",
+            "幸运大师": "/home/k23linux/.openclaw/workspace/notes/lotto-rules.md",
+            "冯导": "/home/k23linux/.openclaw/workspace/notes/english-lesson-log.md",
+            "冯工": "/home/k23linux/.openclaw/workspace/openclaw_lobster_monitor.py",
+            "k23bot（总管）": "/home/k23linux/.openclaw/workspace/notes/tasks.md",
         }
+        self.cron_jobs = []
+        self.pet_item_paths = {}
 
         self._build_ui()
         self.after(100, self.animate)
@@ -515,6 +517,14 @@ class LobsterMonitor(tk.Tk):
             self.ws = workspace_stats(WORKSPACE_DIR)
             self.rating = score_openclaw(self.openclaw_info, self.sys, self.deep_status_text)
 
+            cron_out, _, _ = run_cmd("openclaw cron list --json", timeout=40)
+            if cron_out:
+                try:
+                    obj = json.loads(cron_out)
+                    self.cron_jobs = obj.get("jobs", []) if isinstance(obj, dict) else []
+                except Exception:
+                    self.cron_jobs = []
+
             sess_out, _, _ = run_cmd("openclaw sessions --json")
             task_line = "-"
             if sess_out:
@@ -627,12 +637,7 @@ class LobsterMonitor(tk.Tk):
         self.task_text.insert("end", "- 每120秒刷新深度探针\n")
         self.task_text.insert("end", "- 生成官方可比体量评级\n")
 
-        self.pet_list.delete(0, "end")
-        self.pet_list.insert("end", "🦞 k23bot（总管）— 调度与总协调")
-        self.pet_list.insert("end", "🤓 茶几新闻社 — 06:00 新闻快报/PDF")
-        self.pet_list.insert("end", "🐶 幸运大师 — 周二/五 10:05 Lotto")
-        self.pet_list.insert("end", "🦁 冯导 — 08:00 英语脚本")
-        self.pet_list.insert("end", "🐒 冯工 — 升级、备份、状态舱")
+        self.refresh_pet_roster()
 
     def on_toggle_pets(self):
         show = bool(self.show_pets_var.get())
@@ -645,6 +650,39 @@ class LobsterMonitor(tk.Tk):
             pass
         self.settings["showPets"] = show
         save_lobster_settings(self.settings)
+
+    def infer_pet(self, job_name: str):
+        n = (job_name or "").lower()
+        if "lotto" in n:
+            return "🐶", "幸运大师", self.pet_map.get("幸运大师")
+        if "english" in n or "kids" in n:
+            return "🦁", "冯导", self.pet_map.get("冯导")
+        if "world-special" in n or "brief" in n or "news" in n:
+            return "🤓", "茶几新闻社", self.pet_map.get("茶几新闻社")
+        if "lyrics" in n:
+            return "🎵", "词作宠物", "/home/k23linux/.openclaw/workspace/notes/lyrics-rules.md"
+        return "🧩", "任务宠物", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+
+    def refresh_pet_roster(self):
+        self.pet_list.delete(0, "end")
+        self.pet_item_paths = {}
+
+        # 固定总管
+        head = "🦞 k23bot（总管）— 调度与总协调"
+        self.pet_list.insert("end", head)
+        self.pet_item_paths[head] = self.pet_map.get("k23bot（总管）")
+
+        seen = set()
+        for j in self.cron_jobs:
+            name = j.get("name", "unnamed")
+            if name in seen:
+                continue
+            seen.add(name)
+            emo, pet_name, path = self.infer_pet(name)
+            sched = j.get("schedule", {}).get("expr", "") if isinstance(j.get("schedule", {}), dict) else ""
+            line = f"{emo} {pet_name} — {name} ({sched})"
+            self.pet_list.insert("end", line)
+            self.pet_item_paths[line] = path or "/home/k23linux/.openclaw/workspace/notes/tasks.md"
 
     def open_local_path(self, path):
         p = Path(path)
@@ -661,10 +699,10 @@ class LobsterMonitor(tk.Tk):
         if not sel:
             messagebox.showinfo("提示", "请先选择一个宠物。")
             return
-        label = self.pet_list.get(sel[0]).split(" — ")[0]
-        target = self.pet_map.get(label)
+        line = self.pet_list.get(sel[0])
+        target = self.pet_item_paths.get(line)
         if not target:
-            messagebox.showwarning("未配置", f"未找到 {label} 的设定文件映射")
+            messagebox.showwarning("未配置", "未找到该宠物的设定文件映射")
             return
         self.open_local_path(target)
 
