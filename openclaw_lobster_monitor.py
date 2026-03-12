@@ -583,10 +583,10 @@ class LobsterMonitor(tk.Tk):
         self.pet_text.delete("1.0", "end")
         self.pet_text.insert("end", "宠物栏（分工看板）\n")
         self.pet_text.insert("end", "🦞 k23bot（总管）— 调度与总协调\n")
-        self.pet_text.insert("end", "📰 方边记者 — 06:00 新闻快报/PDF\n")
-        self.pet_text.insert("end", "🎟️ 选号员 — 周二/五 10:05 Lotto\n")
-        self.pet_text.insert("end", "🎬 小课堂导演 — 08:00 英语脚本\n")
-        self.pet_text.insert("end", "🛠️ 运维小工 — 升级、备份、状态舱\n")
+        self.pet_text.insert("end", "🤓 茶几新闻社 — 06:00 新闻快报/PDF\n")
+        self.pet_text.insert("end", "🐶 幸运大师 — 周二/五 10:05 Lotto\n")
+        self.pet_text.insert("end", "🦁 冯导 — 08:00 英语脚本\n")
+        self.pet_text.insert("end", "🐒 冯工 — 升级、备份、状态舱\n")
 
     def run_maintenance_async(self):
         if self.maint_running:
