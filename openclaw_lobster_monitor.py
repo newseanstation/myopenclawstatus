@@ -46,6 +46,22 @@ def save_lobster_settings(settings: dict):
         pass
 
 
+def parse_json_loose(text):
+    s = (text or "").strip()
+    if not s:
+        return None
+    # 兼容前面混有 doctor warnings 的输出
+    for ch in ("{", "["):
+        i = s.find(ch)
+        if i != -1:
+            candidate = s[i:]
+            try:
+                return json.loads(candidate)
+            except Exception:
+                continue
+    return None
+
+
 def parse_openclaw_status(text):
     info = {
         "dashboard": "-",
@@ -474,6 +490,7 @@ class LobsterMonitor(tk.Tk):
         pet_btns = ttk.Frame(self.pet_frame)
         pet_btns.pack(fill="x", padx=6, pady=(0, 6))
         ttk.Button(pet_btns, text="打开选中宠物设定", command=self.open_selected_pet_file).pack(side="left")
+        ttk.Button(pet_btns, text="一键建立宠物园", command=self.bootstrap_pet_park).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开宠物总表", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/pet-roster.md")).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开任务清单", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/tasks.md")).pack(side="left", padx=(8, 0))
 
@@ -519,11 +536,8 @@ class LobsterMonitor(tk.Tk):
 
             cron_out, _, _ = run_cmd("openclaw cron list --json", timeout=40)
             if cron_out:
-                try:
-                    obj = json.loads(cron_out)
-                    self.cron_jobs = obj.get("jobs", []) if isinstance(obj, dict) else []
-                except Exception:
-                    self.cron_jobs = []
+                obj = parse_json_loose(cron_out)
+                self.cron_jobs = obj.get("jobs", []) if isinstance(obj, dict) else []
 
             sess_out, _, _ = run_cmd("openclaw sessions --json")
             task_line = "-"
@@ -661,7 +675,41 @@ class LobsterMonitor(tk.Tk):
             return "🤓", "茶几新闻社", self.pet_map.get("茶几新闻社")
         if "lyrics" in n:
             return "🎵", "词作宠物", "/home/k23linux/.openclaw/workspace/notes/lyrics-rules.md"
+        if "market" in n:
+            return "📈", "市场观察员", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
         return "🧩", "任务宠物", "/home/k23linux/.openclaw/workspace/notes/tasks.md"
+
+    def bootstrap_pet_park(self):
+        # 一键基于当前 cron 任务生成/刷新宠物总表
+        lines = [
+            "# 宠物总表（自动生成）",
+            "",
+            "- 🦞 k23bot（总管）",
+            "  - 职责：总协调与任务调度",
+            "  - 设定文件：`notes/tasks.md`",
+            "",
+            "## 自动识别宠物",
+            "",
+        ]
+        seen = set()
+        for j in self.cron_jobs:
+            name = j.get("name", "unnamed")
+            if name in seen:
+                continue
+            seen.add(name)
+            emo, pet_name, path = self.infer_pet(name)
+            lines += [
+                f"- {emo} {pet_name}",
+                f"  - 任务：`{name}`",
+                f"  - 设定文件：`{Path(path).name if path else 'notes/tasks.md'}`",
+                "",
+            ]
+
+        out = WORKSPACE_DIR / "notes" / "pet-roster.md"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text("\n".join(lines), encoding="utf-8")
+        self.refresh_pet_roster()
+        messagebox.showinfo("完成", "已一键建立/刷新宠物园，并更新 notes/pet-roster.md")
 
     def refresh_pet_roster(self):
         self.pet_list.delete(0, "end")
