@@ -557,7 +557,15 @@ class LobsterMonitor(tk.Tk):
         self.pet_frame = ttk.LabelFrame(card4, text="宠物栏（点击可打开设定）", style="Card.TLabelframe")
         self.pet_frame.pack(fill="x", padx=8, pady=(0, 8))
 
-        self.pet_list = tk.Listbox(self.pet_frame, height=self.pet_rows_var.get(), bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
+        self.pet_list = tk.Listbox(
+            self.pet_frame,
+            height=self.pet_rows_var.get(),
+            bg="#0d1f36",
+            fg="#ffffff",
+            selectforeground="#ffffff",
+            bd=0,
+            font=("Segoe UI", 12),
+        )
         self.pet_list.pack(fill="x", padx=6, pady=(6, 6))
         self.pet_list.bind("<Double-Button-1>", lambda _e: self.open_selected_pet_file())
 
