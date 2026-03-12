@@ -14,6 +14,8 @@
   - cron job: `market-world-brief-0700`
 - [x] **Lotto Max 选号**：每周二/五 10:05（America/Toronto）给 3 注；选号前查看近30期热冷分布（lotteryextreme）。
   - cron job: `lotto-max-1000`
+- [x] **方边特刊全球新闻简报（PDF）**：每天 06:00（America/Toronto）生成20条中文简报并发送可点击链接PDF到Telegram。
+  - cron job: `world-special-brief-0600`
 
 ## 已完成
 - [x] 建立 `notes/`、`memory/`、`notes/inbox.md` 结构
