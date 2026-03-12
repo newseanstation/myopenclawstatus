@@ -333,6 +333,13 @@ class LobsterMonitor(tk.Tk):
         self.maint_running = False
         self.refresh_running = False
         self.rating = {"score": 0, "grade": "D", "percentile": 1, "reasons": []}
+        self.pet_map = {
+            "🦞 k23bot（总管）": "/home/k23linux/.openclaw/workspace/notes/tasks.md",
+            "🤓 茶几新闻社": "/home/k23linux/.openclaw/workspace/notes/fangbian-template.md",
+            "🐶 幸运大师": "/home/k23linux/.openclaw/workspace/notes/lotto-rules.md",
+            "🦁 冯导": "/home/k23linux/.openclaw/workspace/notes/english-lesson-log.md",
+            "🐒 冯工": "/home/k23linux/.openclaw/workspace/openclaw_lobster_monitor.py",
+        }
 
         self._build_ui()
         self.after(100, self.animate)
@@ -427,8 +434,18 @@ class LobsterMonitor(tk.Tk):
         self.task_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0)
         self.task_text.pack(fill="x", padx=8, pady=8)
 
-        self.pet_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
-        self.pet_text.pack(fill="x", padx=8, pady=(0, 8))
+        pet_frame = ttk.LabelFrame(card4, text="宠物栏（点击可打开设定）", style="Card.TLabelframe")
+        pet_frame.pack(fill="x", padx=8, pady=(0, 8))
+
+        self.pet_list = tk.Listbox(pet_frame, height=5, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
+        self.pet_list.pack(fill="x", padx=6, pady=(6, 6))
+        self.pet_list.bind("<Double-Button-1>", lambda _e: self.open_selected_pet_file())
+
+        pet_btns = ttk.Frame(pet_frame)
+        pet_btns.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Button(pet_btns, text="打开选中宠物设定", command=self.open_selected_pet_file).pack(side="left")
+        ttk.Button(pet_btns, text="打开宠物总表", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/pet-roster.md")).pack(side="left", padx=(8, 0))
+        ttk.Button(pet_btns, text="打开任务清单", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/tasks.md")).pack(side="left", padx=(8, 0))
 
         self.canvas = tk.Canvas(card4, width=420, height=180, bg="#07111f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -580,13 +597,34 @@ class LobsterMonitor(tk.Tk):
         self.task_text.insert("end", "- 每120秒刷新深度探针\n")
         self.task_text.insert("end", "- 生成官方可比体量评级\n")
 
-        self.pet_text.delete("1.0", "end")
-        self.pet_text.insert("end", "宠物栏（分工看板）\n")
-        self.pet_text.insert("end", "🦞 k23bot（总管）— 调度与总协调\n")
-        self.pet_text.insert("end", "🤓 茶几新闻社 — 06:00 新闻快报/PDF\n")
-        self.pet_text.insert("end", "🐶 幸运大师 — 周二/五 10:05 Lotto\n")
-        self.pet_text.insert("end", "🦁 冯导 — 08:00 英语脚本\n")
-        self.pet_text.insert("end", "🐒 冯工 — 升级、备份、状态舱\n")
+        self.pet_list.delete(0, "end")
+        self.pet_list.insert("end", "🦞 k23bot（总管）— 调度与总协调")
+        self.pet_list.insert("end", "🤓 茶几新闻社 — 06:00 新闻快报/PDF")
+        self.pet_list.insert("end", "🐶 幸运大师 — 周二/五 10:05 Lotto")
+        self.pet_list.insert("end", "🦁 冯导 — 08:00 英语脚本")
+        self.pet_list.insert("end", "🐒 冯工 — 升级、备份、状态舱")
+
+    def open_local_path(self, path):
+        p = Path(path)
+        if not p.exists():
+            messagebox.showwarning("文件不存在", f"未找到：{path}")
+            return
+        try:
+            subprocess.Popen(["xdg-open", str(p)])
+        except Exception as e:
+            messagebox.showerror("打开失败", str(e))
+
+    def open_selected_pet_file(self):
+        sel = self.pet_list.curselection()
+        if not sel:
+            messagebox.showinfo("提示", "请先选择一个宠物。")
+            return
+        label = self.pet_list.get(sel[0]).split(" — ")[0]
+        target = self.pet_map.get(label)
+        if not target:
+            messagebox.showwarning("未配置", f"未找到 {label} 的设定文件映射")
+            return
+        self.open_local_path(target)
 
     def run_maintenance_async(self):
         if self.maint_running:
