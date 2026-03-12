@@ -12,6 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from tkinter import ttk, messagebox, simpledialog
 
+APP_VERSION = "v2.3"
 REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
 WORKSPACE_DIR = Path("/home/k23linux/.openclaw/workspace")
@@ -472,8 +473,10 @@ class LobsterMonitor(tk.Tk):
         top = ttk.Frame(self)
         top.pack(fill="x", padx=12, pady=8)
 
-        self.hdr = ttk.Label(top, text="🦞 OpenClaw 小龙虾状态舱", style="Hdr.TLabel")
+        self.hdr = ttk.Label(top, text=f"🦞 OpenClaw 小龙虾状态舱 {APP_VERSION}", style="Hdr.TLabel")
         self.hdr.pack(side="left")
+
+        ttk.Button(top, text="Help", command=self.show_help).pack(side="left", padx=(10, 0))
 
         self.time_lbl = ttk.Label(top, text="")
         self.time_lbl.pack(side="right")
@@ -734,6 +737,27 @@ class LobsterMonitor(tk.Tk):
         self.task_text.insert("end", "- 生成官方可比体量评级\n")
 
         self.refresh_pet_roster()
+
+    def show_help(self):
+        txt = (
+            f"小龙虾状态舱 {APP_VERSION}\n\n"
+            "主要功能：\n"
+            "1) 系统状态/资源监控\n"
+            "2) 评级/告警灯/维护\n"
+            "3) 宠物栏（任务映射）\n"
+            "4) 宠物栏显示隐藏、行数调整\n"
+            "5) 编辑选中宠物Emoji（写入 notes/pet-roster.md）\n\n"
+            "使用说明：\n"
+            "- 双击宠物：打开对应设定文件\n"
+            "- 一键建立宠物园：按 cron 任务自动生成宠物列表\n"
+            "- 宠物栏+/宠物栏-：调整显示行数\n"
+            "- 立即刷新：手动拉取最新状态\n\n"
+            "配置文件：\n"
+            "- notes/pet-roster.md\n"
+            "- notes/lobster-settings.json\n"
+            "- notes/tasks.md\n"
+        )
+        messagebox.showinfo("Help / 使用说明", txt)
 
     def on_toggle_pets(self):
         show = bool(self.show_pets_var.get())
