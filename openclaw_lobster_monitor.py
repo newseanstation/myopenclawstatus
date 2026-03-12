@@ -15,6 +15,7 @@ from tkinter import ttk, messagebox
 REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
 WORKSPACE_DIR = Path("/home/k23linux/.openclaw/workspace")
+SETTINGS_PATH = WORKSPACE_DIR / "notes" / "lobster-settings.json"
 
 
 def run_cmd(cmd, timeout=25):
@@ -23,6 +24,26 @@ def run_cmd(cmd, timeout=25):
         return (p.stdout or "").strip(), (p.stderr or "").strip(), p.returncode
     except Exception as e:
         return "", str(e), 1
+
+
+def load_lobster_settings():
+    default = {"showPets": True}
+    try:
+        if SETTINGS_PATH.exists():
+            data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                default.update(data)
+    except Exception:
+        pass
+    return default
+
+
+def save_lobster_settings(settings: dict):
+    try:
+        SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SETTINGS_PATH.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def parse_openclaw_status(text):
@@ -333,6 +354,8 @@ class LobsterMonitor(tk.Tk):
         self.maint_running = False
         self.refresh_running = False
         self.rating = {"score": 0, "grade": "D", "percentile": 1, "reasons": []}
+        self.settings = load_lobster_settings()
+        self.show_pets_var = tk.BooleanVar(value=bool(self.settings.get("showPets", True)))
         self.pet_map = {
             "🦞 k23bot（总管）": "/home/k23linux/.openclaw/workspace/notes/tasks.md",
             "🤓 茶几新闻社": "/home/k23linux/.openclaw/workspace/notes/fangbian-template.md",
@@ -434,14 +457,19 @@ class LobsterMonitor(tk.Tk):
         self.task_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0)
         self.task_text.pack(fill="x", padx=8, pady=8)
 
-        pet_frame = ttk.LabelFrame(card4, text="宠物栏（点击可打开设定）", style="Card.TLabelframe")
-        pet_frame.pack(fill="x", padx=8, pady=(0, 8))
+        pet_top = ttk.Frame(card4)
+        pet_top.pack(fill="x", padx=8, pady=(0, 4))
+        self.pet_toggle_chk = ttk.Checkbutton(pet_top, text="显示宠物栏", variable=self.show_pets_var, command=self.on_toggle_pets)
+        self.pet_toggle_chk.pack(side="left")
 
-        self.pet_list = tk.Listbox(pet_frame, height=5, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
+        self.pet_frame = ttk.LabelFrame(card4, text="宠物栏（点击可打开设定）", style="Card.TLabelframe")
+        self.pet_frame.pack(fill="x", padx=8, pady=(0, 8))
+
+        self.pet_list = tk.Listbox(self.pet_frame, height=5, bg="#0d1f36", fg="#d9f0ff", bd=0, font=("Segoe UI Emoji", 12))
         self.pet_list.pack(fill="x", padx=6, pady=(6, 6))
         self.pet_list.bind("<Double-Button-1>", lambda _e: self.open_selected_pet_file())
 
-        pet_btns = ttk.Frame(pet_frame)
+        pet_btns = ttk.Frame(self.pet_frame)
         pet_btns.pack(fill="x", padx=6, pady=(0, 6))
         ttk.Button(pet_btns, text="打开选中宠物设定", command=self.open_selected_pet_file).pack(side="left")
         ttk.Button(pet_btns, text="打开宠物总表", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/pet-roster.md")).pack(side="left", padx=(8, 0))
@@ -449,6 +477,8 @@ class LobsterMonitor(tk.Tk):
 
         self.canvas = tk.Canvas(card4, width=420, height=180, bg="#07111f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        self.on_toggle_pets()
 
         footer = ttk.Frame(self)
         footer.pack(pady=(0, 10), fill="x", padx=12)
@@ -603,6 +633,18 @@ class LobsterMonitor(tk.Tk):
         self.pet_list.insert("end", "🐶 幸运大师 — 周二/五 10:05 Lotto")
         self.pet_list.insert("end", "🦁 冯导 — 08:00 英语脚本")
         self.pet_list.insert("end", "🐒 冯工 — 升级、备份、状态舱")
+
+    def on_toggle_pets(self):
+        show = bool(self.show_pets_var.get())
+        try:
+            if show:
+                self.pet_frame.pack(fill="x", padx=8, pady=(0, 8))
+            else:
+                self.pet_frame.pack_forget()
+        except Exception:
+            pass
+        self.settings["showPets"] = show
+        save_lobster_settings(self.settings)
 
     def open_local_path(self, path):
         p = Path(path)
