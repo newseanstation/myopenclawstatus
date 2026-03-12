@@ -424,10 +424,13 @@ class LobsterMonitor(tk.Tk):
 
         card4 = ttk.LabelFrame(right, text="当前任务与动画", style="Card.TLabelframe")
         card4.pack(fill="both", expand=True, pady=6)
-        self.task_text = tk.Text(card4, height=8, bg="#0d1f36", fg="#d9f0ff", bd=0)
+        self.task_text = tk.Text(card4, height=7, bg="#0d1f36", fg="#d9f0ff", bd=0)
         self.task_text.pack(fill="x", padx=8, pady=8)
 
-        self.canvas = tk.Canvas(card4, width=420, height=210, bg="#07111f", highlightthickness=0)
+        self.pet_text = tk.Text(card4, height=6, bg="#0d1f36", fg="#d9f0ff", bd=0)
+        self.pet_text.pack(fill="x", padx=8, pady=(0, 8))
+
+        self.canvas = tk.Canvas(card4, width=420, height=180, bg="#07111f", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
         footer = ttk.Frame(self)
@@ -576,6 +579,14 @@ class LobsterMonitor(tk.Tk):
         self.task_text.insert("end", "- 每10秒采样基础状态\n")
         self.task_text.insert("end", "- 每120秒刷新深度探针\n")
         self.task_text.insert("end", "- 生成官方可比体量评级\n")
+
+        self.pet_text.delete("1.0", "end")
+        self.pet_text.insert("end", "宠物栏（分工看板）\n")
+        self.pet_text.insert("end", "🦞 k23bot（总管）— 调度与总协调\n")
+        self.pet_text.insert("end", "📰 方边记者 — 06:00 新闻快报/PDF\n")
+        self.pet_text.insert("end", "🎟️ 选号员 — 周二/五 10:05 Lotto\n")
+        self.pet_text.insert("end", "🎬 小课堂导演 — 08:00 英语脚本\n")
+        self.pet_text.insert("end", "🛠️ 运维小工 — 升级、备份、状态舱\n")
 
     def run_maintenance_async(self):
         if self.maint_running:
