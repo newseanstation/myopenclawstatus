@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 from datetime import datetime
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 
 REFRESH_SEC = 10
 DEEP_REFRESH_SEC = 120
@@ -92,6 +92,30 @@ def load_pet_overrides():
     except Exception:
         pass
     return out
+
+
+def upsert_pet_override(name: str, emoji: str):
+    PET_ROSTER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    if PET_ROSTER_PATH.exists():
+        lines = PET_ROSTER_PATH.read_text(encoding="utf-8", errors="ignore").splitlines()
+    key = re.sub(r"[（(].*?[）)]", "", (name or "")).strip()
+    updated = False
+    out = []
+    for ln in lines:
+        m = re.match(r"^(\s*-\s+)(\S+)(\s+)(.+)$", ln)
+        if m:
+            raw_name = re.sub(r"[（(].*?[）)]", "", m.group(4)).strip()
+            if raw_name == key:
+                out.append(f"- {emoji} {key}")
+                updated = True
+                continue
+        out.append(ln)
+    if not updated:
+        if out and out[-1].strip() != "":
+            out.append("")
+        out.append(f"- {emoji} {key}")
+    PET_ROSTER_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 def parse_json_loose(text):
@@ -540,6 +564,7 @@ class LobsterMonitor(tk.Tk):
         pet_btns = ttk.Frame(self.pet_frame)
         pet_btns.pack(fill="x", padx=6, pady=(0, 6))
         ttk.Button(pet_btns, text="打开选中宠物设定", command=self.open_selected_pet_file).pack(side="left")
+        ttk.Button(pet_btns, text="编辑选中宠物Emoji", command=self.edit_selected_pet_emoji).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="一键建立宠物园", command=self.bootstrap_pet_park).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开宠物总表", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/pet-roster.md")).pack(side="left", padx=(8, 0))
         ttk.Button(pet_btns, text="打开任务清单", command=lambda: self.open_local_path("/home/k23linux/.openclaw/workspace/notes/tasks.md")).pack(side="left", padx=(8, 0))
@@ -820,6 +845,27 @@ class LobsterMonitor(tk.Tk):
             subprocess.Popen(["xdg-open", str(p)])
         except Exception as e:
             messagebox.showerror("打开失败", str(e))
+
+    def edit_selected_pet_emoji(self):
+        sel = self.pet_list.curselection()
+        if not sel:
+            messagebox.showinfo("提示", "请先选择一个宠物。")
+            return
+        line = self.pet_list.get(sel[0])
+        # line: "🤓 茶几新闻社 — ..."
+        m = re.match(r"^\S+\s+(.+?)\s+—", line)
+        if not m:
+            m = re.match(r"^\S+\s+(.+)$", line)
+        if not m:
+            messagebox.showwarning("解析失败", "无法识别宠物名称")
+            return
+        name = m.group(1).strip()
+        new_emoji = simpledialog.askstring("编辑Emoji", f"为【{name}】输入新emoji：", parent=self)
+        if not new_emoji:
+            return
+        upsert_pet_override(name, new_emoji.strip().split()[0])
+        self.refresh_pet_roster()
+        messagebox.showinfo("完成", f"已更新 {name} 的emoji")
 
     def open_selected_pet_file(self):
         sel = self.pet_list.curselection()
